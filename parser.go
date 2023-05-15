@@ -15,7 +15,8 @@ import (
 type ParseOption int
 
 const (
-	Second         ParseOption = 1 << iota // Seconds field, default 0
+	MiLLiSecond    ParseOption = 1 << iota // Seconds field, default 0
+	Second                                 // Seconds field, default 0
 	SecondOptional                         // Optional seconds field, default 0
 	Minute                                 // Minutes field, default 0
 	Hour                                   // Hours field, default 0
@@ -27,6 +28,7 @@ const (
 )
 
 var places = []ParseOption{
+	MiLLiSecond,
 	Second,
 	Minute,
 	Hour,
@@ -36,6 +38,7 @@ var places = []ParseOption{
 }
 
 var defaults = []string{
+	"0",
 	"0",
 	"0",
 	"0",
@@ -56,18 +59,17 @@ type Parser struct {
 //
 // Examples
 //
-//  // Standard parser without descriptors
-//  specParser := NewParser(Minute | Hour | Dom | Month | Dow)
-//  sched, err := specParser.Parse("0 0 15 */3 *")
+//	// Standard parser without descriptors
+//	specParser := NewParser(Minute | Hour | Dom | Month | Dow)
+//	sched, err := specParser.Parse("0 0 15 */3 *")
 //
-//  // Same as above, just excludes time fields
-//  specParser := NewParser(Dom | Month | Dow)
-//  sched, err := specParser.Parse("15 */3 *")
+//	// Same as above, just excludes time fields
+//	specParser := NewParser(Dom | Month | Dow)
+//	sched, err := specParser.Parse("15 */3 *")
 //
-//  // Same as above, just makes Dow optional
-//  specParser := NewParser(Dom | Month | DowOptional)
-//  sched, err := specParser.Parse("15 */3")
-//
+//	// Same as above, just makes Dow optional
+//	specParser := NewParser(Dom | Month | DowOptional)
+//	sched, err := specParser.Parse("15 */3")
 func NewParser(options ParseOption) Parser {
 	optionals := 0
 	if options&DowOptional > 0 {
@@ -130,25 +132,27 @@ func (p Parser) Parse(spec string) (Schedule, error) {
 	}
 
 	var (
-		second     = field(fields[0], seconds)
-		minute     = field(fields[1], minutes)
-		hour       = field(fields[2], hours)
-		dayofmonth = field(fields[3], dom)
-		month      = field(fields[4], months)
-		dayofweek  = field(fields[5], dow)
+		millisecond = field(fields[0], milliseconds)
+		second      = field(fields[1], seconds)
+		minute      = field(fields[2], minutes)
+		hour        = field(fields[3], hours)
+		dayofmonth  = field(fields[4], dom)
+		month       = field(fields[5], months)
+		dayofweek   = field(fields[6], dow)
 	)
 	if err != nil {
 		return nil, err
 	}
 
 	return &SpecSchedule{
-		Second:   second,
-		Minute:   minute,
-		Hour:     hour,
-		Dom:      dayofmonth,
-		Month:    month,
-		Dow:      dayofweek,
-		Location: loc,
+		MilliSecond: millisecond,
+		Second:      second,
+		Minute:      minute,
+		Hour:        hour,
+		Dom:         dayofmonth,
+		Month:       month,
+		Dow:         dayofweek,
+		Location:    loc,
 	}, nil
 }
 
@@ -247,7 +251,9 @@ func getField(field string, r bounds) (uint64, error) {
 }
 
 // getRange returns the bits indicated by the given expression:
-//   number | number "-" number [ "/" number ]
+//
+//	number | number "-" number [ "/" number ]
+//
 // or error parsing range.
 func getRange(expr string, r bounds) (uint64, error) {
 	var (
@@ -366,6 +372,7 @@ func parseDescriptor(descriptor string, loc *time.Location) (Schedule, error) {
 	switch descriptor {
 	case "@yearly", "@annually":
 		return &SpecSchedule{
+			MilliSecond:1<<milliseconds.min,
 			Second:   1 << seconds.min,
 			Minute:   1 << minutes.min,
 			Hour:     1 << hours.min,
@@ -377,6 +384,7 @@ func parseDescriptor(descriptor string, loc *time.Location) (Schedule, error) {
 
 	case "@monthly":
 		return &SpecSchedule{
+			MilliSecond:1<<milliseconds.min,
 			Second:   1 << seconds.min,
 			Minute:   1 << minutes.min,
 			Hour:     1 << hours.min,
@@ -388,6 +396,7 @@ func parseDescriptor(descriptor string, loc *time.Location) (Schedule, error) {
 
 	case "@weekly":
 		return &SpecSchedule{
+			MilliSecond:1<<milliseconds.min,
 			Second:   1 << seconds.min,
 			Minute:   1 << minutes.min,
 			Hour:     1 << hours.min,
@@ -399,6 +408,7 @@ func parseDescriptor(descriptor string, loc *time.Location) (Schedule, error) {
 
 	case "@daily", "@midnight":
 		return &SpecSchedule{
+			MilliSecond:1<<milliseconds.min,
 			Second:   1 << seconds.min,
 			Minute:   1 << minutes.min,
 			Hour:     1 << hours.min,
@@ -410,6 +420,7 @@ func parseDescriptor(descriptor string, loc *time.Location) (Schedule, error) {
 
 	case "@hourly":
 		return &SpecSchedule{
+			MilliSecond:1<<milliseconds.min,
 			Second:   1 << seconds.min,
 			Minute:   1 << minutes.min,
 			Hour:     all(hours),

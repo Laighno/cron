@@ -36,6 +36,13 @@ type Job interface {
 	Run()
 }
 
+type JobType int
+
+const(
+	ONCE_JOB = iota
+	LOOP_JOB
+)
+
 // Schedule describes a job's duty cycle.
 type Schedule interface {
 	// Next returns the next activation time, later than the given time.
@@ -69,7 +76,10 @@ type Entry struct {
 	// It is kept around so that user code that needs to get at the job later,
 	// e.g. via Entries() can do so.
 	Job Job
+
+	Type JobType
 }
+
 
 // Valid returns true if this is not the zero entry.
 func (e Entry) Valid() bool { return e.ID != 0 }
@@ -271,8 +281,12 @@ func (c *Cron) run() {
 						break
 					}
 					c.startJob(e.WrappedJob)
-					e.Prev = e.Next
-					e.Next = e.Schedule.Next(now)
+					if e.Type==ONCE_JOB{
+						c.Remove(e.ID)
+					}else {
+						e.Prev = e.Next
+						e.Next = e.Schedule.Next(now)
+					}
 					c.logger.Info("run", "now", now, "entry", e.ID, "next", e.Next)
 				}
 

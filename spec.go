@@ -5,7 +5,7 @@ import "time"
 // SpecSchedule specifies a duty cycle (to the second granularity), based on a
 // traditional crontab specification. It is computed initially and stored as bit sets.
 type SpecSchedule struct {
-	Second, Minute, Hour, Dom, Month, Dow uint64
+	MilliSecond,Second, Minute, Hour, Dom, Month, Dow uint64
 
 	// Override location for this schedule.
 	Location *time.Location
@@ -19,6 +19,7 @@ type bounds struct {
 
 // The bounds for each field.
 var (
+	milliseconds = bounds{0, 999, nil}
 	seconds = bounds{0, 59, nil}
 	minutes = bounds{0, 59, nil}
 	hours   = bounds{0, 23, nil}
