@@ -5,7 +5,7 @@ import "time"
 // SpecSchedule specifies a duty cycle (to the second granularity), based on a
 // traditional crontab specification. It is computed initially and stored as bit sets.
 type SpecSchedule struct {
-	MilliSecond,Second, Minute, Hour, Dom, Month, Dow uint64
+	MilliSecond,CentiSecond,DeciSecond, Second, Minute, Hour, Dom, Month, Dow uint64
 
 	// Override location for this schedule.
 	Location *time.Location
@@ -19,12 +19,14 @@ type bounds struct {
 
 // The bounds for each field.
 var (
-	milliseconds = bounds{0, 999, nil}
-	seconds = bounds{0, 59, nil}
-	minutes = bounds{0, 59, nil}
-	hours   = bounds{0, 23, nil}
-	dom     = bounds{1, 31, nil}
-	months  = bounds{1, 12, map[string]uint{
+	milliseconds = bounds{0, 9, nil}
+	centiseconds = bounds{0, 9, nil}
+	deciseconds  = bounds{0, 9, nil}
+	seconds      = bounds{0, 59, nil}
+	minutes      = bounds{0, 59, nil}
+	hours        = bounds{0, 23, nil}
+	dom          = bounds{1, 31, nil}
+	months       = bounds{1, 12, map[string]uint{
 		"jan": 1,
 		"feb": 2,
 		"mar": 3,
@@ -80,7 +82,7 @@ func (s *SpecSchedule) Next(t time.Time) time.Time {
 	}
 
 	// Start at the earliest possible time (the upcoming second).
-	t = t.Add(1*time.Second - time.Duration(t.Nanosecond())*time.Nanosecond)
+	t = t.Add(1*time.Millisecond - time.Duration(t.Nanosecond()/1000)*time.Nanosecond)
 
 	// This flag indicates whether a field has been incremented.
 	added := false
@@ -168,6 +170,42 @@ WRAP:
 		t = t.Add(1 * time.Second)
 
 		if t.Second() == 0 {
+			goto WRAP
+		}
+	}
+
+	for 1<<uint((t.UnixMilli()%1000)/100)&s.DeciSecond == 0 {
+		if !added {
+			added = true
+			t = t.Truncate(time.Millisecond*100)
+		}
+		t = t.Add(1 * time.Millisecond*100)
+
+		if (t.UnixMilli()%1000)/100 == 0 {
+			goto WRAP
+		}
+	}
+
+	for 1<<uint((t.UnixMilli()%100)/10)&s.CentiSecond == 0 {
+		if !added {
+			added = true
+			t = t.Truncate(time.Millisecond*10)
+		}
+		t = t.Add(1 * time.Millisecond*10)
+
+		if (t.UnixMilli()%100)/10 == 0 {
+			goto WRAP
+		}
+	}
+
+	for 1<<uint(t.UnixMilli()%10)&s.MilliSecond == 0 {
+		if !added {
+			added = true
+			t = t.Truncate(time.Millisecond)
+		}
+		t = t.Add(1 * time.Millisecond)
+
+		if t.UnixMilli()%10 == 0 {
 			goto WRAP
 		}
 	}

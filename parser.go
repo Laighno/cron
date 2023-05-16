@@ -15,7 +15,9 @@ import (
 type ParseOption int
 
 const (
-	MiLLiSecond    ParseOption = 1 << iota // Seconds field, default 0
+	MilliSecond    ParseOption = 1 << iota // milliSeconds field, default 0
+	CentiSecond                            // centiSecond field, default 0
+	DeciSecond                             // deciSecond field, default 0
 	Second                                 // Seconds field, default 0
 	SecondOptional                         // Optional seconds field, default 0
 	Minute                                 // Minutes field, default 0
@@ -28,7 +30,9 @@ const (
 )
 
 var places = []ParseOption{
-	MiLLiSecond,
+	MilliSecond,
+	CentiSecond,
+	DeciSecond,
 	Second,
 	Minute,
 	Hour,
@@ -38,6 +42,8 @@ var places = []ParseOption{
 }
 
 var defaults = []string{
+	"0",
+	"0",
 	"0",
 	"0",
 	"0",
@@ -133,12 +139,14 @@ func (p Parser) Parse(spec string) (Schedule, error) {
 
 	var (
 		millisecond = field(fields[0], milliseconds)
-		second      = field(fields[1], seconds)
-		minute      = field(fields[2], minutes)
-		hour        = field(fields[3], hours)
-		dayofmonth  = field(fields[4], dom)
-		month       = field(fields[5], months)
-		dayofweek   = field(fields[6], dow)
+		decisecond  = field(fields[1], deciseconds)
+		centisecond = field(fields[2], centiseconds)
+		second      = field(fields[3], seconds)
+		minute      = field(fields[4], minutes)
+		hour        = field(fields[5], hours)
+		dayofmonth  = field(fields[6], dom)
+		month       = field(fields[7], months)
+		dayofweek   = field(fields[8], dow)
 	)
 	if err != nil {
 		return nil, err
@@ -146,6 +154,8 @@ func (p Parser) Parse(spec string) (Schedule, error) {
 
 	return &SpecSchedule{
 		MilliSecond: millisecond,
+		DeciSecond:  decisecond,
+		CentiSecond: centisecond,
 		Second:      second,
 		Minute:      minute,
 		Hour:        hour,
@@ -372,62 +382,62 @@ func parseDescriptor(descriptor string, loc *time.Location) (Schedule, error) {
 	switch descriptor {
 	case "@yearly", "@annually":
 		return &SpecSchedule{
-			MilliSecond:1<<milliseconds.min,
-			Second:   1 << seconds.min,
-			Minute:   1 << minutes.min,
-			Hour:     1 << hours.min,
-			Dom:      1 << dom.min,
-			Month:    1 << months.min,
-			Dow:      all(dow),
-			Location: loc,
+			MilliSecond: 1 << milliseconds.min,
+			Second:      1 << seconds.min,
+			Minute:      1 << minutes.min,
+			Hour:        1 << hours.min,
+			Dom:         1 << dom.min,
+			Month:       1 << months.min,
+			Dow:         all(dow),
+			Location:    loc,
 		}, nil
 
 	case "@monthly":
 		return &SpecSchedule{
-			MilliSecond:1<<milliseconds.min,
-			Second:   1 << seconds.min,
-			Minute:   1 << minutes.min,
-			Hour:     1 << hours.min,
-			Dom:      1 << dom.min,
-			Month:    all(months),
-			Dow:      all(dow),
-			Location: loc,
+			MilliSecond: 1 << milliseconds.min,
+			Second:      1 << seconds.min,
+			Minute:      1 << minutes.min,
+			Hour:        1 << hours.min,
+			Dom:         1 << dom.min,
+			Month:       all(months),
+			Dow:         all(dow),
+			Location:    loc,
 		}, nil
 
 	case "@weekly":
 		return &SpecSchedule{
-			MilliSecond:1<<milliseconds.min,
-			Second:   1 << seconds.min,
-			Minute:   1 << minutes.min,
-			Hour:     1 << hours.min,
-			Dom:      all(dom),
-			Month:    all(months),
-			Dow:      1 << dow.min,
-			Location: loc,
+			MilliSecond: 1 << milliseconds.min,
+			Second:      1 << seconds.min,
+			Minute:      1 << minutes.min,
+			Hour:        1 << hours.min,
+			Dom:         all(dom),
+			Month:       all(months),
+			Dow:         1 << dow.min,
+			Location:    loc,
 		}, nil
 
 	case "@daily", "@midnight":
 		return &SpecSchedule{
-			MilliSecond:1<<milliseconds.min,
-			Second:   1 << seconds.min,
-			Minute:   1 << minutes.min,
-			Hour:     1 << hours.min,
-			Dom:      all(dom),
-			Month:    all(months),
-			Dow:      all(dow),
-			Location: loc,
+			MilliSecond: 1 << milliseconds.min,
+			Second:      1 << seconds.min,
+			Minute:      1 << minutes.min,
+			Hour:        1 << hours.min,
+			Dom:         all(dom),
+			Month:       all(months),
+			Dow:         all(dow),
+			Location:    loc,
 		}, nil
 
 	case "@hourly":
 		return &SpecSchedule{
-			MilliSecond:1<<milliseconds.min,
-			Second:   1 << seconds.min,
-			Minute:   1 << minutes.min,
-			Hour:     all(hours),
-			Dom:      all(dom),
-			Month:    all(months),
-			Dow:      all(dow),
-			Location: loc,
+			MilliSecond: 1 << milliseconds.min,
+			Second:      1 << seconds.min,
+			Minute:      1 << minutes.min,
+			Hour:        all(hours),
+			Dom:         all(dom),
+			Month:       all(months),
+			Dow:         all(dow),
+			Location:    loc,
 		}, nil
 
 	}

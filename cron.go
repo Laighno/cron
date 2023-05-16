@@ -38,7 +38,7 @@ type Job interface {
 
 type JobType int
 
-const(
+const (
 	ONCE_JOB = iota
 	LOOP_JOB
 )
@@ -79,7 +79,6 @@ type Entry struct {
 
 	Type JobType
 }
-
 
 // Valid returns true if this is not the zero entry.
 func (e Entry) Valid() bool { return e.ID != 0 }
@@ -152,6 +151,10 @@ func (c *Cron) AddFunc(spec string, cmd func()) (EntryID, error) {
 	return c.AddJob(spec, FuncJob(cmd))
 }
 
+func (c *Cron) AddFuncWithType(spec string, cmd func(), type_ JobType) (EntryID, error) {
+	return c.AddJobWithType(spec, FuncJob(cmd), type_)
+}
+
 // AddJob adds a Job to the Cron to be run on the given schedule.
 // The spec is parsed using the time zone of this Cron instance as the default.
 // An opaque ID is returned that can be used to later remove it.
@@ -161,6 +164,14 @@ func (c *Cron) AddJob(spec string, cmd Job) (EntryID, error) {
 		return 0, err
 	}
 	return c.Schedule(schedule, cmd), nil
+}
+
+func (c *Cron) AddJobWithType(spec string, cmd Job, type_ JobType) (EntryID, error) {
+	schedule, err := c.parser.Parse(spec)
+	if err != nil {
+		return 0, err
+	}
+	return c.ScheduleWithType(schedule, cmd,type_), nil
 }
 
 // Schedule adds a Job to the Cron to be run on the given schedule.
@@ -174,6 +185,26 @@ func (c *Cron) Schedule(schedule Schedule, cmd Job) EntryID {
 		Schedule:   schedule,
 		WrappedJob: c.chain.Then(cmd),
 		Job:        cmd,
+		Type:       LOOP_JOB,
+	}
+	if !c.running {
+		c.entries = append(c.entries, entry)
+	} else {
+		c.add <- entry
+	}
+	return entry.ID
+}
+
+func (c *Cron) ScheduleWithType(schedule Schedule, cmd Job, type_ JobType) EntryID {
+	c.runningMu.Lock()
+	defer c.runningMu.Unlock()
+	c.nextID++
+	entry := &Entry{
+		ID:         c.nextID,
+		Schedule:   schedule,
+		WrappedJob: c.chain.Then(cmd),
+		Job:        cmd,
+		Type:       type_,
 	}
 	if !c.running {
 		c.entries = append(c.entries, entry)
@@ -281,9 +312,9 @@ func (c *Cron) run() {
 						break
 					}
 					c.startJob(e.WrappedJob)
-					if e.Type==ONCE_JOB{
+					if e.Type == ONCE_JOB {
 						c.Remove(e.ID)
-					}else {
+					} else {
 						e.Prev = e.Next
 						e.Next = e.Schedule.Next(now)
 					}
